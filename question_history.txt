@@ -1,3 +1,26 @@
-
 How many customers have order count above 15
-How many customers have order count above 15
+List the number of orders that were placed in 2003.
+Find the number of customers who have never ordered product number S72_3212.
+List the cities where both offices and customers are located.
+What was the last question asked by the user in the conversation?
+List the names of all customers and their phone numbers where the phone number ends with 9.
+List the names of all customers whose phone number ends with 9 and also display their numbers.
+List the names of all customers whose phone numbers end with 9.
+List the full names of all employees who are sales representatives, and present them in bullet points.
+List the full names of all employees who are sales representatives.
+What was the total revenue in 2024 for each region?
+Display the date when the maximum number of late orders was made. (A late order is defined as one that was shipped on or after its required date.)
+List the names and phone numbers of all customers living in the USA.
+List the names of all customers who live in the USA.List the names and phone numbers of all customers living in the USA.
+what was the last question I asked
+List the names and phone numbers of all customers living in the USA.
+what was the last question I asked and also mention the result
+List the names and phone numbers of all customers living in the USA.
+Display the date when the maximum number of late orders was made. (A late order is defined as one that was shipped on or after its required date.)
+List the full names of all employees who are sales representatives.
+What was the total revenue in 2024 for each region?
+what was the last question I asked and also mention the result
+what was the second last question I asked and also mention the result
+what was the second last question I asked and also mention the result
+what was the last question I asked and also mention the result
+List the names and phone numbers of all customers living in the USA.

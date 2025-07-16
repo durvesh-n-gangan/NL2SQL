@@ -1,0 +1,59 @@
+[2025-07-16 10:41:49] Question: List the names and phone numbers of all customers living in the USA.
+SQL Query: SELECT customerName, phone FROM customers WHERE country = "USA"
+Status: SUCCESS
+--------------------------------------------------
+[2025-07-16 10:42:12] Question: List the names and phone numbers of all customers living in the USA.
+SQL Query: SELECT customerName, phone FROM customers WHERE country = "USA" LIMIT 5
+Status: Success
+--------------------------------------------------
+[2025-07-16 10:42:31] Question: Display the date when the maximum number of late orders was made. (A late order is defined as one that was shipped on or after its required date.)
+SQL Query: SELECT orderDate FROM orders WHERE shippedDate >= requiredDate GROUP BY orderDate ORDER BY COUNT(*) DESC LIMIT 1
+Status: SUCCESS
+--------------------------------------------------
+[2025-07-16 10:42:48] Question: Display the date when the maximum number of late orders was made. (A late order is defined as one that was shipped on or after its required date.)
+SQL Query: SELECT shippedDate FROM orders WHERE shippedDate >= requiredDate GROUP BY shippedDate ORDER BY count(*) DESC LIMIT 1
+Status: Success
+--------------------------------------------------
+[2025-07-16 10:48:15] Question: List the full names of all employees who are sales representatives.
+SQL Query: SELECT CONCAT(firstName, " ", lastName) FROM employees WHERE jobTitle = "Sales Rep"
+Status: SUCCESS
+--------------------------------------------------
+[2025-07-16 10:49:10] Question: What was the total revenue in 2024 for each region?
+SQL Query: SELECT T4.territory, SUM(T3.quantityOrdered * T3.priceEach) AS total_revenue
+FROM orders AS T1
+INNER JOIN customers AS T2
+  ON T1.customerNumber = T2.customerNumber
+INNER JOIN orderdetails AS T3
+  ON T1.orderNumber = T3.orderNumber
+INNER JOIN employees AS E
+  ON T2.salesRepEmployeeNumber = E.employeeNumber
+INNER JOIN offices AS T4
+  ON E.officeCode = T4.officeCode
+WHERE
+  YEAR(T1.orderDate) = 2004
+GROUP BY
+  T4.territory
+ORDER BY
+  total_revenue DESC;
+Status: SUCCESS
+--------------------------------------------------
+[2025-07-16 13:34:13] Question: what was the last question I asked and also mention the result
+SQL Query: SELECT T1.customerName, T2.total_amount FROM customers AS T1 INNER JOIN (SELECT customerNumber, SUM(amount) AS total_amount FROM payments GROUP BY customerNumber ORDER BY total_amount DESC LIMIT 1) AS T2 ON T1.customerNumber = T2.customerNumber
+Status: SUCCESS
+--------------------------------------------------
+[2025-07-16 13:35:02] Question: what was the second last question I asked and also mention the result
+SQL Query: SELECT T3.customerName, SUM(T1.quantityOrdered * T1.priceEach) AS total FROM orderdetails AS T1 JOIN orders AS T2 ON T1.orderNumber = T2.orderNumber JOIN customers AS T3 ON T2.customerNumber = T3.customerNumber GROUP BY T3.customerName ORDER BY total DESC LIMIT 1
+Status: SUCCESS
+--------------------------------------------------
+[2025-07-16 13:36:06] Question: what was the second last question I asked and also mention the result
+SQL Query: SELECT c.customerName, SUM(p.amount) AS total_spent FROM customers c JOIN payments p ON c.customerNumber = p.customerNumber GROUP BY c.customerName ORDER BY total_spent DESC LIMIT 1 OFFSET 1;
+Status: SUCCESS
+--------------------------------------------------
+[2025-07-16 13:37:45] Question: what was the last question I asked and also mention the result
+SQL Query: SELECT T2.customerName, SUM(T1.amount) AS total_payment FROM payments AS T1 INNER JOIN customers AS T2 ON T1.customerNumber = T2.customerNumber GROUP BY T2.customerName ORDER BY total_payment DESC LIMIT 1 OFFSET 1
+Status: SUCCESS
+--------------------------------------------------
+[2025-07-16 13:39:09] Question: List the names and phone numbers of all customers living in the USA.
+SQL Query: SELECT customerName, phone FROM customers WHERE country = "USA"
+Status: SUCCESS
+--------------------------------------------------

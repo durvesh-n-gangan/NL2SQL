@@ -9,8 +9,6 @@ db_user = os.getenv("DB_USER")
 db_password = os.getenv("DB_PASSWORD")
 db_host = os.getenv("DB_HOST")
 db_name = os.getenv("DB_NAME")
-os.environ["LANGSMITH_TRACING"] = "true"
-langsmith_api_key = os.getenv("LANGSMITH_API_KEY")
 
 db = SQLDatabase.from_uri(f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}")
 
@@ -88,16 +86,13 @@ def write_query(state_dict):
     return result['query']
 
 def execute_query(query_string):
-    execute_query_tool = QuerySQLDatabaseTool(db=db)
-    return execute_query_tool.invoke(query_string)
-
-def sync_memory_with_streamlit(memory, chat_history):
-    memory.clear()
-    for msg in chat_history:
-        if msg["role"] == "user":
-            memory.save_context({"input": msg["content"]}, {})
-        elif msg["role"] == "assistant":
-            memory.save_context({}, {"output": msg["content"]})
+    try:
+        execute_query_tool = QuerySQLDatabaseTool(db=db)
+        result = execute_query_tool.invoke(query_string)
+        return result
+    except Exception as e:
+        error_msg = f"Database Error: {str(e)}"
+        return error_msg
 
 def get_memory_chain_with_history(llm, db, memory):
     def generate_query_with_history(inputs):
@@ -109,33 +104,39 @@ def get_memory_chain_with_history(llm, db, memory):
         structured_llm = llm.with_structured_output(QueryState)
         result = structured_llm.invoke(prompt)
         return dict(result)["query"]
+    
+    def execute_and_log_query(inputs):
+        query = inputs["query"]
+        question = inputs["question"]
+        try:
+            result = execute_query(query)
+            if "Database Error:" in str(result):
+                save_query_log(question, query, "ERROR")
+            else:
+                save_query_log(question, query, "SUCCESS")
+            return result
+        except Exception as e:
+            save_query_log(question, query, f"EXCEPTION: {str(e)}")
+            return f"Database Error: {str(e)}"
 
     parser = StrOutputParser()
     rephrase_answer = RunnableSequence(answer_prompt, llm, parser)
     
     memory_chain = (
         RunnablePassthrough.assign(query=RunnableLambda(generate_query_with_history))
-        .assign(result=RunnableLambda(lambda d: execute_query(d["query"])))
+        .assign(result=RunnableLambda(execute_and_log_query))
         | rephrase_answer
     )
     return memory_chain
 
-parser = StrOutputParser()
-rephrase_answer = RunnableSequence(answer_prompt, llm, parser)
-query_chain = RunnablePassthrough.assign(query=RunnableLambda(lambda d: write_query(d))).assign(result=RunnableLambda(lambda d: execute_query(d["query"])))
-chain = RunnableSequence(query_chain, rephrase_answer)
-
-# Initialize memory
 memory = ConversationBufferWindowMemory(k=3, return_messages=True)
 
-# Create memory-aware chain
 memory_chain = get_memory_chain_with_history(llm, db, memory)
 
-# File to store question history
 HISTORY_FILE = "question_history.txt"
+QUERY_LOG_FILE = "query_log.txt"
 
 def save_question(question):
-    """Save a question to the history file"""
     try:
         with open(HISTORY_FILE, "a", encoding="utf-8") as f:
             f.write(question + "\n")
@@ -143,77 +144,40 @@ def save_question(question):
         print(f"Error saving question: {e}")
 
 def get_saved_questions():
-    """Get list of saved questions from history file"""
     try:
         if os.path.exists(HISTORY_FILE):
             with open(HISTORY_FILE, "r", encoding="utf-8") as f:
                 questions = [line.strip() for line in f.readlines() if line.strip()]
-                # Return last 10 questions to avoid cluttering the UI
                 return questions[-10:] if len(questions) > 10 else questions
         return []
     except Exception as e:
         print(f"Error reading questions: {e}")
         return []
 
-def handle_query(question):
-    """Handle a user query and return the answer using conversation memory"""
+def save_query_log(question, query, result_status):
     try:
-        # Save the question to history
+        import datetime
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(QUERY_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[{timestamp}] Question: {question}\n")
+            f.write(f"SQL Query: {query}\n")
+            f.write(f"Status: {result_status}\n")
+            f.write("-" * 50 + "\n")
+    except Exception as e:
+        print(f"Error saving query log: {e}")
+
+def handle_query(question):
+    try:
         save_question(question)
         
-        # Prepare input for memory-aware chain
         input_data = {"question": question}
-        
-        # Run the memory-aware chain to get the answer
+      
         answer = memory_chain.invoke(input_data)
         
-        # Save the conversation to memory
         memory.save_context({"input": question}, {"output": answer})
         
         return answer
     except Exception as e:
         error_msg = f"Error processing your question: {str(e)}. Please try rephrasing your question."
-        # Still save error conversations to memory for context
         memory.save_context({"input": question}, {"output": error_msg})
         return error_msg
-
-def get_conversation_history():
-    """Get the current conversation history from memory"""
-    try:
-        messages = memory.chat_memory.messages
-        history = []
-        for msg in messages:
-            if hasattr(msg, 'content'):
-                msg_type = "Human" if msg.type == "human" else "Assistant"
-                history.append(f"{msg_type}: {msg.content}")
-        return history
-    except Exception as e:
-        print(f"Error getting conversation history: {e}")
-        return []
-
-def clear_conversation_memory():
-    """Clear the conversation memory"""
-    try:
-        memory.clear()
-        return "Conversation memory cleared successfully."
-    except Exception as e:
-        return f"Error clearing memory: {str(e)}"
-
-# Test the chain (optional - can be removed in production)
-if __name__ == "__main__":
-    # Test the memory-aware chain
-    test_question = "How many customers are there?"
-    result = handle_query(test_question)
-    print(f"Question: {test_question}")
-    print(f"Answer: {result}")
-    
-    # Test follow-up question
-    follow_up = "What about orders?"
-    result2 = handle_query(follow_up)
-    print(f"\nFollow-up: {follow_up}")
-    print(f"Answer: {result2}")
-    
-    # Show conversation history
-    print(f"\nConversation History:")
-    for msg in get_conversation_history():
-        print(f"  {msg}")
